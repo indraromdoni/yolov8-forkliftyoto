@@ -167,6 +167,18 @@ def inference_thread():
         stable_yoto = sum(yoto_buffer) >= 3
 
         if stable_forklift and stable_yoto and in_between:
+            outside_elapse = time.time() - start_outside
+            start_inbetween = time.time()
+        else:
+            inbetween_elapse = time.time() - start_inbetween
+            start_outside = time.time()
+        
+        if inbetween_elapse>2 and outside_elapse<=2:
+            flag_inbetween = True
+        elif outside_elapse>2:
+            flag_inbetween = False
+
+        if flag_inbetween:
             #print("Forklift and Yoto detected in between lines")
             res = client.write_single_coil(17, True)
             #print(res)
@@ -174,7 +186,8 @@ def inference_thread():
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
         else:
             res = client.write_single_coil(17, False)
-        # Simpan annotated frame untuk streaming
+            
+# Simpan annotated frame untuk streaming
         annotated_frame = annotated.copy()
         finish_time = time.time()
         #print(f"Inference time: {finish_time - start_time:.2f} seconds")
