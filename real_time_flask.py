@@ -166,19 +166,42 @@ def inference_thread():
         stable_forklift = sum(forklift_buffer) >= 3
         stable_yoto = sum(yoto_buffer) >= 3
 
-        if stable_forklift and stable_yoto and in_between:
-            outside_elapse = time.time() - start_outside
-            start_inbetween = time.time()
-        else:
-            inbetween_elapse = time.time() - start_inbetween
-            start_outside = time.time()
-        
-        if inbetween_elapse>2 and outside_elapse<=2:
-            flag_inbetween = True
-        elif outside_elapse>2:
-            flag_inbetween = False
+        now = time.time()
 
+        if stable_forklift and stable_yoto and in_between:
+            if not flag_inbetween:
+                inbetween_start = now
+                # Jika baru masuk area, reset outside timer
+                outside_start = None
+                outside_elapse = 0
+            flag_inbetween = True
+            # Hitung waktu di dalam area
+            if inbetween_start:
+                inbetween_elapse = now - inbetween_start
+        else:
+            if flag_inbetween:
+                if outside_start is None:
+                    outside_start = now
+                outside_elapse = now - outside_start
+                # Jika waktu di luar area < 2 detik, tetap flag_inbetween True
+                if outside_elapse < 2:
+                    flag_inbetween = True
+                else:
+                    flag_inbetween = False
+                    inbetween_start = None
+                    inbetween_elapse = 0
+                    outside_start = None
+                    outside_elapse = 0
+            else:
+                inbetween_start = None
+                inbetween_elapse = 0
+                outside_start = None
+                outside_elapse = 0
+
+        # Visualisasi status dan waktu
         if flag_inbetween:
+            cv2.putText(annotated, f"IN AREA: {inbetween_elapse:.1f}s", (50, 150),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
             #print("Forklift and Yoto detected in between lines")
             res = client.write_single_coil(17, True)
             #print(res)
@@ -186,6 +209,8 @@ def inference_thread():
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
         else:
             res = client.write_single_coil(17, False)
+            cv2.putText(annotated, f"OUTSIDE: {outside_elapse:.1f}s", (50, 150),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
             
 # Simpan annotated frame untuk streaming
         annotated_frame = annotated.copy()
